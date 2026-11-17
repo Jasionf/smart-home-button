@@ -11,13 +11,14 @@ packages:
 # Change these to match your Home Assistant instance before flashing.
 substitutions:
   timezone: Europe/Amsterdam
-  weather_entity: weather.buienradar
+  weather_entity: weather.forecast_thuis
   climate_entity: climate.airco_beneden
   music_player_entity: media_player.woonkamer
   light_entity: light.spots_woonkamer
   #todo_entity: ?
   #calendar_entity: ?
   #camera_entity: ?
+  #energy_page: ?
 
 # Hardware specific?
 esphome:
@@ -47,7 +48,6 @@ esphome:
         - output.turn_on: tp_intr
     - priority: -100
       then:
-        - pcf8563.read_time:
         - light.turn_on:
             id: display_backlight
             brightness: 100%
@@ -102,6 +102,20 @@ wifi:
     ssid: !secret ap_ssid
     password: !secret ap_password
 
+globals:
+  - id: swipe_start_x
+    type: int
+    initial_value: '-1'
+  - id: swipe_cur_x
+    type: int
+    initial_value: '0'
+  - id: swipe_start_y
+    type: int
+    initial_value: '0'
+  - id: swipe_cur_y
+    type: int
+    initial_value: '0'
+
 captive_portal:
 
 lvgl:
@@ -116,20 +130,27 @@ lvgl:
   color_depth: 16
   bg_color: col_bg
   default_font: font_lbl
-  
-globals:
-  - id: swipe_start_x
-    type: int
-    initial_value: '-1'
-  - id: swipe_cur_x
-    type: int
-    initial_value: '0'
-  - id: swipe_start_y
-    type: int
-    initial_value: '0'
-  - id: swipe_cur_y
-    type: int
-    initial_value: '0'
+  on_focus:
+    then:
+      - lvgl.resume:
+  on_idle:
+    - timeout: 20s
+      then:
+        - light.turn_on: 
+            id: display_backlight
+            brightness: 50%
+    - timeout: 30s
+      then:
+        - lvgl.pause:
+  on_pause:
+    then:
+        - light.turn_off: display_backlight
+  on_resume: 
+    then:
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+      - lvgl.widget.redraw:
 
 i2c:
   - id: internal_i2c
@@ -279,36 +300,35 @@ display:
 # GT911 Touchscreen Controller
 touchscreen:
     platform: cst816
-    # platform: cst826
+    # platform: cst826 //requires external component
     id: touch
     i2c_id: internal_i2c
     skip_probe: True
     update_interval: 25ms
     address: 0x15
     on_touch:
-        - lambda: |-
-            if (id(swipe_start_x) < 0) {
-                id(swipe_start_x) = touch.x;
-                id(swipe_start_y) = touch.y;
-            }
-            id(swipe_cur_x) = touch.x;
-            id(swipe_cur_y) = touch.y;
-            id(last_interaction) = millis();
+      # - lvgl.resume:
+      - lambda: |-
+          if (id(swipe_start_x) < 0) {
+              id(swipe_start_x) = touch.x;
+              id(swipe_start_y) = touch.y;
+          }
+          id(swipe_cur_x) = touch.x;
+          id(swipe_cur_y) = touch.y;
     on_release:
-        - lambda: |-
-            int dx = id(swipe_cur_x) - id(swipe_start_x);
-            int dy = id(swipe_cur_y) - id(swipe_start_y);
-            id(swipe_start_x) = -1;
-            if (abs(dx) < 50 || abs(dy) > abs(dx)) return;
-            bool on_clock = !id(in_menu) && !id(in_light) && !id(in_air)
-                        && !id(in_music) && !id(in_timer) && !id(in_fridge)
-                        && !id(in_colorpicker);
-            if (on_clock && dx < 0) {
-                id(open_menu).execute();
-            } else if (id(in_menu) && (dx > 0 || dx < 0)) {
-                id(close_menu).execute();
-            }
-            id(last_interaction) = millis();
+      - lambda: |-
+          int dx = id(swipe_cur_x) - id(swipe_start_x);
+          int dy = id(swipe_cur_y) - id(swipe_start_y);
+          id(swipe_start_x) = -1;
+          if (abs(dx) < 50 || abs(dy) > abs(dx)) return;
+          bool on_clock = !id(in_menu) && !id(in_light) && !id(in_air)
+                      && !id(in_music) && !id(in_timer) && !id(in_fridge)
+                      && !id(in_colorpicker);
+          if (on_clock && dx < 0) {
+              id(open_menu).execute();
+          } else if (id(in_menu) && (dx > 0 || dx < 0)) {
+              id(close_menu).execute();
+          }
 
 # Backlight toggle
 light:
@@ -327,20 +347,18 @@ sensor:
     pin_a:
       number: GPIO42
       mode: INPUT_PULLUP
+      inverted: true
     pin_b:
       number: GPIO4
       mode: INPUT_PULLUP
-    resolution: 4
+      inverted: true
+    resolution: 2
     on_clockwise:
+      # - lvgl.resume:
       - script.execute: rotate_anticlockwise
-      - lambda: |-
-            id(last_interaction) = millis();
-      # if (id(current_page)) id(current_page)->dial_decrease();
     on_anticlockwise:
+      # - lvgl.resume:
       - script.execute: rotate_clockwise
-      - lambda: |-
-            id(last_interaction) = millis();
-      # if (id(current_page)) id(current_page)->dial_increase();
 
 # Front button
 binary_sensor:
@@ -361,17 +379,13 @@ binary_sensor:
           - OFF for at least 40ms
         invalid_cooldown: 150ms
         then:
+          # - lvgl.resume:
           - script.execute: double_click
-          - lambda: |-
-                id(last_interaction) = millis();
-          #       if (id(current_page)) id(current_page)->double_press();
-            
+
       - timing:
           - ON for at most 420ms
           - OFF for at least 520ms
         invalid_cooldown: 150ms
         then:
+          # - lvgl.resume:
           - script.execute: single_click
-          - lambda: |-
-                id(last_interaction) = millis();
-          #       if (id(current_page)) id(current_page)->double_press();
