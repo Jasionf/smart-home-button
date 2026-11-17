@@ -55,6 +55,11 @@ text_sensor:
     attribute: friendly_name
 
   - platform: homeassistant
+    id: media_player_title
+    entity_id: ${music_player_entity}
+    attribute: title
+
+  - platform: homeassistant
     id: media_player_status
     entity_id: ${music_player_entity}
     on_value:
