@@ -75,6 +75,9 @@ globals:
   - id: light_brightness
     type: int
     initial_value: '75'
+  - id: light_brightness_step
+    type: int
+    initial_value: '5'
   - id: in_light
     type: bool
     initial_value: 'false'
@@ -106,35 +109,37 @@ globals:
 sensor:
   - platform: homeassistant
     id: ha_light_brightness
-    entity_id: ${light_entity}
+    entity_id: ${light_entity} # !lambda "return id(light_entity).c_str();"
     attribute: brightness
-    # on_value:
-      # - script.execute: sync_ha_states
+    on_value:
+      - lambda: |-
+          if (x != x) return;
+          if (x == id(light_brightness)) return;
+          if (x < 0) x = 0;
+          if (x > 100) x = 100;
+          id(light_brightness) = x;
 
   - platform: homeassistant
     id: ha_light_color
-    entity_id: ${light_entity}
+    entity_id: ${light_entity} #  !lambda "return id(light_entity).c_str();"
     attribute: rgb_color
-    # on_value:
-      # - script.execute: sync_ha_states
-
 
 binary_sensor:
   - platform: homeassistant
     id: ha_light_on
-    entity_id: ${light_entity}
+    entity_id: ${light_entity} #  !lambda "return id(light_entity).c_str();"
     # on_state:
     #   - script.execute: sync_ha_states
 
 text_sensor:
   - platform: homeassistant
     id: ha_light_fname
-    entity_id: ${light_entity}
+    entity_id: ${light_entity} #  !lambda "return id(light_entity).c_str();"
     attribute: friendly_name
 
   - platform: homeassistant
     id: ha_light_area
-    entity_id: ${light_entity}
+    entity_id: ${light_entity} #  !lambda "return id(light_entity).c_str();"
     attribute: area_id
 
 script:
@@ -169,17 +174,17 @@ script:
             - homeassistant.service:
                 service: light.turn_on
                 data:
-                  entity_id: ${light_entity}
+                  entity_id: ${light_entity} #  !lambda "return id(cfg_light).c_str();"
                   # rgb_color: |-
                   #   - !lambda "return id(light_color_r);"
                   #   - !lambda "return id(light_color_g);"
                   #   - !lambda "return id(light_color_b);"
-                  brightness_pct: !lambda "return id(light_brightness);"
+                  brightness_pct: !lambda "return id(light_brightness) / 100.0;"
           else:
             - homeassistant.service:
                 service: light.turn_off
                 data:
-                  entity_id: ${light_entity}
+                  entity_id: ${light_entity} #  !lambda "return id(cfg_light).c_str();"
 
   - id: open_colorpicker
     then:
@@ -232,12 +237,12 @@ script:
             - homeassistant.service:
                 service: light.turn_on
                 data:
-                  entity_id: ${light_entity}
+                  entity_id: ${light_entity} #  !lambda "return id(cfg_light).c_str();"
                   # rgb_color: |-
                   #   - !lambda "return id(light_color_r);"
                   #   - !lambda "return id(light_color_g);"
                   #   - !lambda "return id(light_color_b);"
-                  brightness_pct: !lambda "return id(light_brightness);"
+                  brightness_pct: !lambda "return id(light_brightness) / 100.0;"
       - lvgl.page.show:
           id: page_light
           animation: MOVE_RIGHT
@@ -293,12 +298,13 @@ script:
           value: !lambda "return id(light_color_h);"
 
   - id: light_brightness_up
+    mode: restart
     then:
       - lambda: |-
-          int v = id(light_brightness) + 1;
-          if (v > 100) v = 100;
-          id(light_brightness) = v;
+          int v = id(light_brightness) + id(light_brightness_step);
+          id(light_brightness) = v > 100 ? 100 : v;
       - script.execute: refresh_light_arc
+      - delay: 300ms
       - if:
           condition:
             lambda: 'return id(light_on);'
@@ -306,7 +312,7 @@ script:
             - homeassistant.service:
                 service: light.turn_on
                 data:
-                  entity_id: ${light_entity}
+                  entity_id: ${light_entity} #  !lambda "return id(cfg_light).c_str();"
                   # rgb_color: |-
                   #   - !lambda "return id(light_color_r);"
                   #   - !lambda "return id(light_color_g);"
@@ -314,12 +320,13 @@ script:
                   brightness_pct: !lambda "return id(light_brightness);"
 
   - id: light_brightness_down
+    mode: restart
     then:
       - lambda: |-
-          int v = id(light_brightness) - 1;
-          if (v < 0) v = 0;
-          id(light_brightness) = v;
+          int v = id(light_brightness) - id(light_brightness_step);
+          id(light_brightness) = v < 0 ? 0 : v;
       - script.execute: refresh_light_arc
+      - delay: 300ms
       - if:
           condition:
             lambda: 'return id(light_on);'
@@ -327,12 +334,12 @@ script:
             - homeassistant.service:
                 service: light.turn_on
                 data:
-                  entity_id: ${light_entity}
+                  entity_id: ${light_entity} #  !lambda "return id(cfg_light).c_str();"
                   # rgb_color: |-
                   #   - !lambda "return id(light_color_r);"
                   #   - !lambda "return id(light_color_g);"
                   #   - !lambda "return id(light_color_b);"
-                  brightness_pct: !lambda "return id(light_brightness);"
+                  brightness_pct: !lambda "return id(light_brightness) / 100.0;"
 
   - id: refresh_light_arc
     then:
@@ -445,18 +452,18 @@ lvgl:
 
               - label:
                   id: lbl_brightness_num
-                  align: CENTER
+                  align: LEFT_MID
                   x: 0
-                  y: 0
+                  y: -20
                   text: "75"
                   text_font: font_light_big
                   text_color: 0xFFFFFF
 
               - label:
                   id: lbl_brightness_pct
-                  align: CENTER
+                  align: RIGHT_MID
                   x: 0
-                  y: 0
+                  y: -20
                   text: "%"
                   text_font: font_light_pct
                   text_color: col_light_purple
@@ -525,7 +532,7 @@ lvgl:
                   shadow_spread: 0
                   clickable: true
                   scrollbar_mode: "OFF"
-                  #scroll_dir: NONE
+                  # scroll_dir: NONE
                   #on_click:
                     #- script.execute: cycle_gradient_effect
                   widgets:
