@@ -382,7 +382,7 @@ script:
           static char bufClocktt[64];
           sprintf(bufTimertt, "%s", "Timer");
           sprintf(bufFridgett, "%s", "Fridge");
-          sprintf(bufClocktt, "%s", "Weather");
+          sprintf(bufClocktt, "%s", "Home");
           sprintf(bufLighttt, "%s", id(ha_light_fname).state.c_str());
           sprintf(bufActt, "%s", id(ha_air_fname).state.c_str());
           sprintf(bufMusictt, "%s", id(media_player_fname).state.c_str());
@@ -404,22 +404,22 @@ script:
           sprintf(bufFridge, "%dC - %dC", -19, 4);
           sprintf(bufLight, "%d %%", (int)id(light_brightness));
           sprintf(bufAc, "%s - %.1fC", id(ha_air_hvac_mode).state.c_str(), id(ha_air_target_temp).state);
-          sprintf(bufMusic, "%s", id(media_player_status).state.c_str());
+          sprintf(bufMusic, "%s - %s", id(media_player_status).state.c_str(), id(media_player_title).state.c_str());
           sprintf(bufClock, "%.1fC", id(ha_temperature).state);
           subtitles[0] = bufTimer;
-          subtitles[1] = bufFridge;       
+          subtitles[1] = bufFridge;
           subtitles[2] = bufLight;
           subtitles[3] = bufAc;
           subtitles[4] = bufMusic;
           subtitles[5] = bufClock;
-
+          
           const lv_img_dsc_t* IMGS[6] = {
-            id(menu_img_timer)->get_lv_img_dsc(),
-            id(menu_img_fridge)->get_lv_img_dsc(),
-            id(menu_img_light)->get_lv_img_dsc(),
-            id(menu_img_ac)->get_lv_img_dsc(),
-            id(menu_img_music)->get_lv_img_dsc(),
-            id(menu_img_home)->get_lv_img_dsc()
+            id(menu_img_timer)->get_lv_image_dsc(),
+            id(menu_img_fridge)->get_lv_image_dsc(),
+            id(menu_img_light)->get_lv_image_dsc(),
+            id(menu_img_ac)->get_lv_image_dsc(),
+            id(menu_img_music)->get_lv_image_dsc(),
+            id(menu_img_home)->get_lv_image_dsc()
           };
           // Per-item accent colors: Timer, Fridge, Lights, AC, Music, Home
           const uint32_t ACCENT_COLORS[6] = {
